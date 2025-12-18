@@ -4,14 +4,16 @@ import { cn } from "@/lib/utils";
 
 interface CardProps extends React.HTMLAttributes<HTMLDivElement> {
   hover?: boolean;
+  glass?: boolean;
 }
 
-const Card = React.forwardRef<HTMLDivElement, CardProps>(({ className, hover = false, ...props }, ref) => (
+const Card = React.forwardRef<HTMLDivElement, CardProps>(({ className, hover = false, glass = false, ...props }, ref) => (
   <div
     ref={ref}
     className={cn(
-      "rounded-xl border border-border bg-card text-card-foreground shadow-card transition-all duration-200",
-      hover && "hover:shadow-card-lg hover:-translate-y-1 cursor-pointer",
+      "rounded-xl border border-border bg-card text-card-foreground shadow-sm transition-all duration-300 ease-smooth",
+      hover && "hover:shadow-lg hover:-translate-y-1 cursor-pointer",
+      glass && "bg-card/80 backdrop-blur-sm border-border/50",
       className
     )}
     {...props}
@@ -28,7 +30,7 @@ CardHeader.displayName = "CardHeader";
 
 const CardTitle = React.forwardRef<HTMLParagraphElement, React.HTMLAttributes<HTMLHeadingElement>>(
   ({ className, ...props }, ref) => (
-    <h3 ref={ref} className={cn("text-xl font-semibold leading-none tracking-tight", className)} {...props} />
+    <h3 ref={ref} className={cn("text-lg font-semibold leading-none tracking-tight text-foreground", className)} {...props} />
   ),
 );
 CardTitle.displayName = "CardTitle";
