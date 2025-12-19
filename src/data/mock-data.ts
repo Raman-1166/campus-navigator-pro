@@ -6,6 +6,8 @@ export const sampleColleges: College[] = [
     id: 'college-1',
     name: 'Delhi Technical University',
     address: 'Shahbad Daulatpur, Main Bawana Road, Delhi-110042',
+    description: 'One of the premier technical universities in Delhi',
+    status: 'active',
     gpsLocation: { lat: 28.7499, lng: 77.1171 },
     createdAt: new Date('2024-01-01')
   },
@@ -13,6 +15,8 @@ export const sampleColleges: College[] = [
     id: 'college-2',
     name: 'Indian Institute of Technology Delhi',
     address: 'Hauz Khas, New Delhi-110016',
+    description: 'Premier engineering institute in India',
+    status: 'active',
     gpsLocation: { lat: 28.5456, lng: 77.1926 },
     createdAt: new Date('2024-01-15')
   }

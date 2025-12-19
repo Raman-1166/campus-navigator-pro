@@ -9,7 +9,8 @@ import {
   Trash2,
   Save,
   X,
-  ChevronRight
+  ChevronRight,
+  Pencil
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -19,9 +20,15 @@ import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Layout } from '@/components/layout/Layout';
 import { useNavigationStore } from '@/store/navigation-store';
-import { PlaceType } from '@/types/navigation';
+import { useAuthStore } from '@/store/auth-store';
+import { College, Building, Floor, Place, PlaceType } from '@/types/navigation';
 import { toast } from '@/hooks/use-toast';
 import { AnimatedSection, StaggerContainer, StaggerItem } from '@/components/ui/AnimatedSection';
+import { DeleteConfirmDialog } from '@/components/admin/DeleteConfirmDialog';
+import { EditCollegeDialog } from '@/components/admin/EditCollegeDialog';
+import { EditBuildingDialog } from '@/components/admin/EditBuildingDialog';
+import { EditFloorDialog } from '@/components/admin/EditFloorDialog';
+import { EditPlaceDialog } from '@/components/admin/EditPlaceDialog';
 
 const placeTypes: PlaceType[] = [
   'classroom', 'laboratory', 'office', 'canteen', 'auditorium', 
@@ -30,6 +37,9 @@ const placeTypes: PlaceType[] = [
 ];
 
 const Admin = () => {
+  const { role } = useAuthStore();
+  const isAdmin = role === 'admin';
+
   const {
     colleges,
     buildings,
@@ -42,10 +52,20 @@ const Admin = () => {
     setSelectedBuilding,
     setSelectedFloor,
     addCollege,
+    updateCollege,
+    deleteCollege,
     addBuilding,
+    updateBuilding,
+    deleteBuilding,
     addFloor,
+    updateFloor,
+    deleteFloor,
     addPlace,
-    deletePlace
+    updatePlace,
+    deletePlace,
+    getBuildingCountForCollege,
+    getFloorCountForBuilding,
+    getPlaceCountForFloor
   } = useNavigationStore();
 
   const [activeTab, setActiveTab] = useState<'colleges' | 'buildings' | 'floors' | 'places'>('colleges');
@@ -65,11 +85,29 @@ const Admin = () => {
   const [placeX, setPlaceX] = useState('400');
   const [placeY, setPlaceY] = useState('300');
 
+  // Delete dialog states
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState<{ type: string; id: string; name: string } | null>(null);
+
+  // Edit dialog states
+  const [editCollegeOpen, setEditCollegeOpen] = useState(false);
+  const [editCollegeData, setEditCollegeData] = useState<College | null>(null);
+  const [editBuildingOpen, setEditBuildingOpen] = useState(false);
+  const [editBuildingData, setEditBuildingData] = useState<Building | null>(null);
+  const [editFloorOpen, setEditFloorOpen] = useState(false);
+  const [editFloorData, setEditFloorData] = useState<Floor | null>(null);
+  const [editPlaceOpen, setEditPlaceOpen] = useState(false);
+  const [editPlaceData, setEditPlaceData] = useState<Place | null>(null);
+
   const filteredBuildings = buildings.filter(b => b.collegeId === selectedCollegeId);
   const filteredFloors = floors.filter(f => f.buildingId === selectedBuildingId);
   const filteredPlaces = places.filter(p => p.floorId === selectedFloorId);
 
   const handleAddCollege = () => {
+    if (!isAdmin) {
+      toast({ title: 'Access Denied', description: 'Only admins can add colleges', variant: 'destructive' });
+      return;
+    }
     if (!collegeName.trim()) {
       toast({ title: 'Error', description: 'College name is required', variant: 'destructive' });
       return;
@@ -77,6 +115,7 @@ const Admin = () => {
     addCollege({
       name: collegeName,
       address: collegeAddress,
+      status: 'active',
       gpsLocation: { lat: 0, lng: 0 }
     });
     setCollegeName('');
@@ -86,6 +125,10 @@ const Admin = () => {
   };
 
   const handleAddBuilding = () => {
+    if (!isAdmin) {
+      toast({ title: 'Access Denied', description: 'Only admins can add buildings', variant: 'destructive' });
+      return;
+    }
     if (!selectedCollegeId) {
       toast({ title: 'Error', description: 'Select a college first', variant: 'destructive' });
       return;
@@ -108,6 +151,10 @@ const Admin = () => {
   };
 
   const handleAddFloor = () => {
+    if (!isAdmin) {
+      toast({ title: 'Access Denied', description: 'Only admins can add floors', variant: 'destructive' });
+      return;
+    }
     if (!selectedBuildingId) {
       toast({ title: 'Error', description: 'Select a building first', variant: 'destructive' });
       return;
@@ -126,6 +173,10 @@ const Admin = () => {
   };
 
   const handleAddPlace = () => {
+    if (!isAdmin) {
+      toast({ title: 'Access Denied', description: 'Only admins can add places', variant: 'destructive' });
+      return;
+    }
     if (!selectedFloorId || !selectedBuildingId) {
       toast({ title: 'Error', description: 'Select a floor first', variant: 'destructive' });
       return;
@@ -152,9 +203,111 @@ const Admin = () => {
     toast({ title: 'Success', description: 'Place added successfully' });
   };
 
-  const handleDeletePlace = (placeId: string) => {
-    deletePlace(placeId);
-    toast({ title: 'Deleted', description: 'Place removed successfully' });
+  const openDeleteDialog = (type: string, id: string, name: string) => {
+    if (!isAdmin) {
+      toast({ title: 'Access Denied', description: 'Only admins can delete items', variant: 'destructive' });
+      return;
+    }
+    setDeleteTarget({ type, id, name });
+    setDeleteDialogOpen(true);
+  };
+
+  const handleConfirmDelete = () => {
+    if (!deleteTarget || !isAdmin) return;
+
+    switch (deleteTarget.type) {
+      case 'college':
+        deleteCollege(deleteTarget.id);
+        break;
+      case 'building':
+        deleteBuilding(deleteTarget.id);
+        break;
+      case 'floor':
+        deleteFloor(deleteTarget.id);
+        break;
+      case 'place':
+        deletePlace(deleteTarget.id);
+        break;
+    }
+
+    toast({ title: 'Deleted', description: `${deleteTarget.name} has been removed` });
+    setDeleteDialogOpen(false);
+    setDeleteTarget(null);
+  };
+
+  const getCascadeWarning = () => {
+    if (!deleteTarget) return undefined;
+
+    switch (deleteTarget.type) {
+      case 'college': {
+        const buildingCount = getBuildingCountForCollege(deleteTarget.id);
+        if (buildingCount > 0) {
+          return `This will also delete ${buildingCount} building(s) and all associated floors, places, and navigation paths.`;
+        }
+        break;
+      }
+      case 'building': {
+        const floorCount = getFloorCountForBuilding(deleteTarget.id);
+        if (floorCount > 0) {
+          return `This will also delete ${floorCount} floor(s) and all associated places and navigation paths.`;
+        }
+        break;
+      }
+      case 'floor': {
+        const placeCount = getPlaceCountForFloor(deleteTarget.id);
+        if (placeCount > 0) {
+          return `This will also delete ${placeCount} place(s) and all associated navigation paths.`;
+        }
+        break;
+      }
+    }
+    return undefined;
+  };
+
+  const openEditDialog = (type: string, item: College | Building | Floor | Place) => {
+    if (!isAdmin) {
+      toast({ title: 'Access Denied', description: 'Only admins can edit items', variant: 'destructive' });
+      return;
+    }
+
+    switch (type) {
+      case 'college':
+        setEditCollegeData(item as College);
+        setEditCollegeOpen(true);
+        break;
+      case 'building':
+        setEditBuildingData(item as Building);
+        setEditBuildingOpen(true);
+        break;
+      case 'floor':
+        setEditFloorData(item as Floor);
+        setEditFloorOpen(true);
+        break;
+      case 'place':
+        setEditPlaceData(item as Place);
+        setEditPlaceOpen(true);
+        break;
+    }
+  };
+
+  const handleSaveCollege = (id: string, updates: Partial<College>) => {
+    updateCollege(id, updates);
+    toast({ title: 'Updated', description: 'College updated successfully' });
+  };
+
+  const handleSaveBuilding = (id: string, updates: Partial<Building>) => {
+    updateBuilding(id, updates);
+    toast({ title: 'Updated', description: 'Building updated successfully' });
+  };
+
+  const handleSaveFloor = (id: string, updates: Partial<Floor>) => {
+    updateFloor(id, updates);
+    toast({ title: 'Updated', description: 'Floor updated successfully' });
+  };
+
+  const handleSavePlace = (id: string, updates: Partial<Place>) => {
+    updatePlace(id, updates);
+    toast({ title: 'Updated', description: 'Place updated successfully' });
   };
 
   const tabs = [
@@ -186,6 +339,11 @@ const Admin = () => {
               <p className="text-muted-foreground">Manage campus data and configuration</p>
             </div>
           </div>
+          {!isAdmin && (
+            <Badge variant="outline" className="text-destructive border-destructive">
+              View Only Mode
+            </Badge>
+          )}
         </motion.div>
 
         {/* Tabs */}
@@ -200,7 +358,7 @@ const Admin = () => {
                   whileHover={{ scale: 1.02 }}
                   whileTap={{ scale: 0.98 }}
                   onClick={() => {
-                    setActiveTab(tab.id as any);
+                    setActiveTab(tab.id as typeof activeTab);
                     setShowAddForm(false);
                   }}
                   className={`
@@ -282,18 +440,20 @@ const Admin = () => {
                   <CardTitle className="text-lg capitalize">{activeTab}</CardTitle>
                   <CardDescription>Manage {activeTab} data</CardDescription>
                 </div>
-                <Button 
-                  onClick={() => setShowAddForm(!showAddForm)} 
-                  variant={showAddForm ? "outline" : "default"}
-                  size="sm"
-                >
-                  {showAddForm ? <X className="h-4 w-4 mr-2" /> : <Plus className="h-4 w-4 mr-2" />}
-                  {showAddForm ? 'Cancel' : 'Add New'}
-                </Button>
+                {isAdmin && (
+                  <Button 
+                    onClick={() => setShowAddForm(!showAddForm)} 
+                    variant={showAddForm ? "outline" : "default"}
+                    size="sm"
+                  >
+                    {showAddForm ? <X className="h-4 w-4 mr-2" /> : <Plus className="h-4 w-4 mr-2" />}
+                    {showAddForm ? 'Cancel' : 'Add New'}
+                  </Button>
+                )}
               </CardHeader>
               <CardContent>
                 {/* Add Forms */}
-                {showAddForm && (
+                {showAddForm && isAdmin && (
                   <motion.div
                     initial={{ opacity: 0, height: 0 }}
                     animate={{ opacity: 1, height: 'auto' }}
@@ -469,10 +629,35 @@ const Admin = () => {
                           whileHover={{ x: 4 }}
                           className="flex items-center justify-between p-4 rounded-xl bg-secondary/50 hover:bg-secondary transition-colors"
                         >
-                          <div>
-                            <p className="font-medium text-foreground">{item.name}</p>
+                          <div className="flex-1">
+                            <div className="flex items-center gap-2">
+                              <p className="font-medium text-foreground">{item.name}</p>
+                              <Badge variant={item.status === 'active' ? 'default' : 'secondary'} className="text-xs">
+                                {item.status}
+                              </Badge>
+                            </div>
                             <p className="text-xs text-muted-foreground">{item.address}</p>
                           </div>
+                          {isAdmin && (
+                            <div className="flex gap-1">
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => openEditDialog('college', item)}
+                                className="h-8 w-8 text-muted-foreground hover:text-primary hover:bg-primary/10"
+                              >
+                                <Pencil className="h-4 w-4" />
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => openDeleteDialog('college', item.id, item.name)}
+                                className="h-8 w-8 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </div>
+                          )}
                         </motion.div>
                       </StaggerItem>
                     ))}
@@ -483,13 +668,33 @@ const Admin = () => {
                           whileHover={{ x: 4 }}
                           className="flex items-center justify-between p-4 rounded-xl bg-secondary/50 hover:bg-secondary transition-colors"
                         >
-                          <div>
+                          <div className="flex-1">
                             <p className="font-medium text-foreground">{item.name}</p>
                             <div className="flex items-center gap-2 mt-1">
                               <Badge variant="secondary" className="text-xs">{item.code}</Badge>
                               <span className="text-xs text-muted-foreground">{item.floors} floors</span>
                             </div>
                           </div>
+                          {isAdmin && (
+                            <div className="flex gap-1">
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => openEditDialog('building', item)}
+                                className="h-8 w-8 text-muted-foreground hover:text-primary hover:bg-primary/10"
+                              >
+                                <Pencil className="h-4 w-4" />
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => openDeleteDialog('building', item.id, item.name)}
+                                className="h-8 w-8 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </div>
+                          )}
                         </motion.div>
                       </StaggerItem>
                     ))}
@@ -500,10 +705,30 @@ const Admin = () => {
                           whileHover={{ x: 4 }}
                           className="flex items-center justify-between p-4 rounded-xl bg-secondary/50 hover:bg-secondary transition-colors"
                         >
-                          <div>
+                          <div className="flex-1">
                             <p className="font-medium text-foreground">{item.name}</p>
                             <p className="text-xs text-muted-foreground">Floor {item.floorNumber}</p>
                           </div>
+                          {isAdmin && (
+                            <div className="flex gap-1">
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => openEditDialog('floor', item)}
+                                className="h-8 w-8 text-muted-foreground hover:text-primary hover:bg-primary/10"
+                              >
+                                <Pencil className="h-4 w-4" />
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => openDeleteDialog('floor', item.id, item.name)}
+                                className="h-8 w-8 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </div>
+                          )}
                         </motion.div>
                       </StaggerItem>
                     ))}
@@ -514,21 +739,33 @@ const Admin = () => {
                           whileHover={{ x: 4 }}
                           className="flex items-center justify-between p-4 rounded-xl bg-secondary/50 hover:bg-secondary transition-colors"
                         >
-                          <div>
+                          <div className="flex-1">
                             <p className="font-medium text-foreground">{item.name}</p>
                             <div className="flex items-center gap-2 mt-1">
                               <Badge variant="outline" className="text-xs capitalize">{item.type}</Badge>
                               {item.code && <span className="text-xs text-muted-foreground">{item.code}</span>}
                             </div>
                           </div>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => handleDeletePlace(item.id)}
-                            className="h-8 w-8 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
+                          {isAdmin && (
+                            <div className="flex gap-1">
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => openEditDialog('place', item)}
+                                className="h-8 w-8 text-muted-foreground hover:text-primary hover:bg-primary/10"
+                              >
+                                <Pencil className="h-4 w-4" />
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => openDeleteDialog('place', item.id, item.name)}
+                                className="h-8 w-8 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </div>
+                          )}
                         </motion.div>
                       </StaggerItem>
                     ))}
@@ -617,6 +854,42 @@ const Admin = () => {
           </AnimatedSection>
         </div>
       </div>
+
+      {/* Delete Confirmation Dialog */}
+      <DeleteConfirmDialog
+        open={deleteDialogOpen}
+        onOpenChange={setDeleteDialogOpen}
+        title={`Delete ${deleteTarget?.type || 'item'}?`}
+        description={`Are you sure you want to delete "${deleteTarget?.name}"? This action cannot be undone.`}
+        cascadeWarning={getCascadeWarning()}
+        onConfirm={handleConfirmDelete}
+      />
+
+      {/* Edit Dialogs */}
+      <EditCollegeDialog
+        open={editCollegeOpen}
+        onOpenChange={setEditCollegeOpen}
+        college={editCollegeData}
+        onSave={handleSaveCollege}
+      />
+      <EditBuildingDialog
+        open={editBuildingOpen}
+        onOpenChange={setEditBuildingOpen}
+        building={editBuildingData}
+        onSave={handleSaveBuilding}
+      />
+      <EditFloorDialog
+        open={editFloorOpen}
+        onOpenChange={setEditFloorOpen}
+        floor={editFloorData}
+        onSave={handleSaveFloor}
+      />
+      <EditPlaceDialog
+        open={editPlaceOpen}
+        onOpenChange={setEditPlaceOpen}
+        place={editPlaceData}
+        onSave={handleSavePlace}
+      />
     </Layout>
   );
 };

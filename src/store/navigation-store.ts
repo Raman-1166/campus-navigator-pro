@@ -33,20 +33,45 @@ interface NavigationStore {
   calculateRoute: () => void;
   clearNavigation: () => void;
   
-  // Admin actions
+  // College CRUD
   addCollege: (college: Omit<College, 'id' | 'createdAt'>) => void;
+  updateCollege: (id: string, updates: Partial<College>) => void;
+  deleteCollege: (id: string) => void;
+  
+  // Building CRUD
   addBuilding: (building: Omit<Building, 'id'>) => void;
+  updateBuilding: (id: string, updates: Partial<Building>) => void;
+  deleteBuilding: (id: string) => void;
+  
+  // Floor CRUD
   addFloor: (floor: Omit<Floor, 'id'>) => void;
+  updateFloor: (id: string, updates: Partial<Floor>) => void;
+  deleteFloor: (id: string) => void;
+  
+  // Place CRUD
   addPlace: (place: Omit<Place, 'id'>) => void;
-  addConnection: (connection: Omit<PathConnection, 'id'>) => void;
   updatePlace: (id: string, updates: Partial<Place>) => void;
   deletePlace: (id: string) => void;
   
-  // Getters
+  // Connection CRUD
+  addConnection: (connection: Omit<PathConnection, 'id'>) => void;
+  updateConnection: (id: string, updates: Partial<PathConnection>) => void;
+  deleteConnection: (id: string) => void;
+  
+  // Utility getters
   getCollegeBuildings: () => Building[];
   getBuildingFloors: () => Floor[];
   getFloorPlaces: () => Place[];
   searchPlaces: (query: string) => Place[];
+  getCollegeById: (id: string) => College | undefined;
+  getBuildingById: (id: string) => Building | undefined;
+  getFloorById: (id: string) => Floor | undefined;
+  getPlaceById: (id: string) => Place | undefined;
+  
+  // Cascade info helpers
+  getBuildingCountForCollege: (collegeId: string) => number;
+  getFloorCountForBuilding: (buildingId: string) => number;
+  getPlaceCountForFloor: (floorId: string) => number;
 }
 
 export const useNavigationStore = create<NavigationStore>()(
@@ -106,51 +131,138 @@ export const useNavigationStore = create<NavigationStore>()(
         navigationResult: null
       }),
       
+      // College CRUD
       addCollege: (collegeData) => {
         const newCollege: College = {
           ...collegeData,
           id: `college-${Date.now()}`,
+          status: collegeData.status || 'active',
           createdAt: new Date()
         };
         set((state) => ({ colleges: [...state.colleges, newCollege] }));
       },
       
+      updateCollege: (id, updates) => {
+        set((state) => ({
+          colleges: state.colleges.map((c) => 
+            c.id === id ? { ...c, ...updates, updatedAt: new Date() } : c
+          )
+        }));
+      },
+      
+      deleteCollege: (id) => {
+        const { buildings, floors, places, connections } = get();
+        
+        // Get all building IDs for this college
+        const collegeBuildingIds = buildings.filter(b => b.collegeId === id).map(b => b.id);
+        
+        // Get all floor IDs for these buildings
+        const buildingFloorIds = floors.filter(f => collegeBuildingIds.includes(f.buildingId)).map(f => f.id);
+        
+        // Get all place IDs for these floors
+        const floorPlaceIds = places.filter(p => buildingFloorIds.includes(p.floorId)).map(p => p.id);
+        
+        set((state) => ({
+          colleges: state.colleges.filter((c) => c.id !== id),
+          buildings: state.buildings.filter((b) => b.collegeId !== id),
+          floors: state.floors.filter((f) => !collegeBuildingIds.includes(f.buildingId)),
+          places: state.places.filter((p) => !buildingFloorIds.includes(p.floorId)),
+          connections: state.connections.filter(
+            (c) => !floorPlaceIds.includes(c.fromPlaceId) && !floorPlaceIds.includes(c.toPlaceId)
+          ),
+          selectedCollegeId: state.selectedCollegeId === id ? null : state.selectedCollegeId,
+          selectedBuildingId: collegeBuildingIds.includes(state.selectedBuildingId || '') ? null : state.selectedBuildingId,
+          selectedFloorId: buildingFloorIds.includes(state.selectedFloorId || '') ? null : state.selectedFloorId
+        }));
+      },
+      
+      // Building CRUD
       addBuilding: (buildingData) => {
         const newBuilding: Building = {
           ...buildingData,
-          id: `building-${Date.now()}`
+          id: `building-${Date.now()}`,
+          createdAt: new Date()
         };
         set((state) => ({ buildings: [...state.buildings, newBuilding] }));
       },
       
+      updateBuilding: (id, updates) => {
+        set((state) => ({
+          buildings: state.buildings.map((b) => 
+            b.id === id ? { ...b, ...updates, updatedAt: new Date() } : b
+          )
+        }));
+      },
+      
+      deleteBuilding: (id) => {
+        const { floors, places, connections } = get();
+        
+        // Get all floor IDs for this building
+        const buildingFloorIds = floors.filter(f => f.buildingId === id).map(f => f.id);
+        
+        // Get all place IDs for these floors
+        const floorPlaceIds = places.filter(p => buildingFloorIds.includes(p.floorId)).map(p => p.id);
+        
+        set((state) => ({
+          buildings: state.buildings.filter((b) => b.id !== id),
+          floors: state.floors.filter((f) => f.buildingId !== id),
+          places: state.places.filter((p) => !buildingFloorIds.includes(p.floorId)),
+          connections: state.connections.filter(
+            (c) => !floorPlaceIds.includes(c.fromPlaceId) && !floorPlaceIds.includes(c.toPlaceId)
+          ),
+          selectedBuildingId: state.selectedBuildingId === id ? null : state.selectedBuildingId,
+          selectedFloorId: buildingFloorIds.includes(state.selectedFloorId || '') ? null : state.selectedFloorId
+        }));
+      },
+      
+      // Floor CRUD
       addFloor: (floorData) => {
         const newFloor: Floor = {
           ...floorData,
-          id: `floor-${Date.now()}`
+          id: `floor-${Date.now()}`,
+          createdAt: new Date()
         };
         set((state) => ({ floors: [...state.floors, newFloor] }));
       },
       
+      updateFloor: (id, updates) => {
+        set((state) => ({
+          floors: state.floors.map((f) => 
+            f.id === id ? { ...f, ...updates, updatedAt: new Date() } : f
+          )
+        }));
+      },
+      
+      deleteFloor: (id) => {
+        const { places, connections } = get();
+        
+        // Get all place IDs for this floor
+        const floorPlaceIds = places.filter(p => p.floorId === id).map(p => p.id);
+        
+        set((state) => ({
+          floors: state.floors.filter((f) => f.id !== id),
+          places: state.places.filter((p) => p.floorId !== id),
+          connections: state.connections.filter(
+            (c) => !floorPlaceIds.includes(c.fromPlaceId) && !floorPlaceIds.includes(c.toPlaceId)
+          ),
+          selectedFloorId: state.selectedFloorId === id ? null : state.selectedFloorId
+        }));
+      },
+      
+      // Place CRUD
       addPlace: (placeData) => {
         const newPlace: Place = {
           ...placeData,
-          id: `place-${Date.now()}`
+          id: `place-${Date.now()}`,
+          createdAt: new Date()
         };
         set((state) => ({ places: [...state.places, newPlace] }));
-      },
-      
-      addConnection: (connectionData) => {
-        const newConnection: PathConnection = {
-          ...connectionData,
-          id: `conn-${Date.now()}`
-        };
-        set((state) => ({ connections: [...state.connections, newConnection] }));
       },
       
       updatePlace: (id, updates) => {
         set((state) => ({
           places: state.places.map((p) => 
-            p.id === id ? { ...p, ...updates } : p
+            p.id === id ? { ...p, ...updates, updatedAt: new Date() } : p
           )
         }));
       },
@@ -164,6 +276,30 @@ export const useNavigationStore = create<NavigationStore>()(
         }));
       },
       
+      // Connection CRUD
+      addConnection: (connectionData) => {
+        const newConnection: PathConnection = {
+          ...connectionData,
+          id: `conn-${Date.now()}`
+        };
+        set((state) => ({ connections: [...state.connections, newConnection] }));
+      },
+      
+      updateConnection: (id, updates) => {
+        set((state) => ({
+          connections: state.connections.map((c) => 
+            c.id === id ? { ...c, ...updates } : c
+          )
+        }));
+      },
+      
+      deleteConnection: (id) => {
+        set((state) => ({
+          connections: state.connections.filter((c) => c.id !== id)
+        }));
+      },
+      
+      // Getters
       getCollegeBuildings: () => {
         const { buildings, selectedCollegeId } = get();
         if (!selectedCollegeId) return [];
@@ -201,7 +337,21 @@ export const useNavigationStore = create<NavigationStore>()(
             p.type.toLowerCase().includes(lowerQuery)
           )
           .slice(0, 10);
-      }
+      },
+      
+      getCollegeById: (id) => get().colleges.find(c => c.id === id),
+      getBuildingById: (id) => get().buildings.find(b => b.id === id),
+      getFloorById: (id) => get().floors.find(f => f.id === id),
+      getPlaceById: (id) => get().places.find(p => p.id === id),
+      
+      getBuildingCountForCollege: (collegeId) => 
+        get().buildings.filter(b => b.collegeId === collegeId).length,
+      
+      getFloorCountForBuilding: (buildingId) => 
+        get().floors.filter(f => f.buildingId === buildingId).length,
+      
+      getPlaceCountForFloor: (floorId) => 
+        get().places.filter(p => p.floorId === floorId).length
     }),
     {
       name: 'campus-navigator-storage',

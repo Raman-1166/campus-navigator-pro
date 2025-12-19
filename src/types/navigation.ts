@@ -4,12 +4,15 @@ export interface College {
   id: string;
   name: string;
   address: string;
+  description?: string;
+  status: 'active' | 'inactive';
   gpsLocation: {
     lat: number;
     lng: number;
   };
   logoUrl?: string;
   createdAt: Date;
+  updatedAt?: Date;
 }
 
 export interface Building {
@@ -17,11 +20,14 @@ export interface Building {
   collegeId: string;
   name: string;
   code: string; // Short code like "MB" for Main Building
+  description?: string;
   floors: number;
   gpsLocation?: {
     lat: number;
     lng: number;
   };
+  createdAt?: Date;
+  updatedAt?: Date;
 }
 
 export interface Floor {
@@ -32,6 +38,8 @@ export interface Floor {
   floorPlanUrl?: string;
   width: number; // Canvas width
   height: number; // Canvas height
+  createdAt?: Date;
+  updatedAt?: Date;
 }
 
 export type PlaceType = 
@@ -58,6 +66,7 @@ export interface Place {
   name: string;
   type: PlaceType;
   code?: string; // Room number like "101", "A-203"
+  description?: string;
   position: {
     x: number;
     y: number;
@@ -65,6 +74,8 @@ export interface Place {
   // For corridor segments, we use start and end points
   isNode: boolean; // True for rooms, stairs, lifts; false for corridor waypoints
   connectedTo?: string[]; // IDs of connected places/nodes
+  createdAt?: Date;
+  updatedAt?: Date;
 }
 
 export interface PathConnection {
