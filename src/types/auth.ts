@@ -5,6 +5,7 @@ export interface AuthUser {
   email: string;
   name: string;
   role: UserRole;
+  profilePicture?: string;
 }
 
 export interface AuthState {
@@ -15,6 +16,7 @@ export interface AuthState {
 
 export interface AuthActions {
   login: (email: string, password: string, role: UserRole) => Promise<boolean>;
+  googleLogin: (token: string) => Promise<boolean>;
   logout: () => void;
   hasRole: (requiredRole: UserRole) => boolean;
 }

@@ -9,13 +9,14 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { useAuthStore } from '@/store/auth-store';
 import { useToast } from '@/hooks/use-toast';
 import type { UserRole } from '@/types/auth';
+import { GoogleLogin, CredentialResponse } from '@react-oauth/google';
 
 export default function Login() {
   const navigate = useNavigate();
   const location = useLocation();
-  const { login, isAuthenticated } = useAuthStore();
+  const { login, googleLogin, isAuthenticated } = useAuthStore();
   const { toast } = useToast();
-  
+
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [role, setRole] = useState<UserRole>('user');
@@ -31,7 +32,7 @@ export default function Login() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!email || !password) {
       toast({
         title: "Validation Error",
@@ -42,16 +43,16 @@ export default function Login() {
     }
 
     setIsLoading(true);
-    
+
     try {
       const success = await login(email, password, role);
-      
+
       if (success) {
         toast({
           title: "Welcome!",
           description: `Logged in as ${role === 'admin' ? 'Administrator' : 'User'}`,
         });
-        
+
         const from = (location.state as { from?: { pathname: string } })?.from?.pathname || '/';
         navigate(from, { replace: true });
       } else {
@@ -72,6 +73,46 @@ export default function Login() {
     }
   };
 
+  const handleGoogleSuccess = async (credentialResponse: CredentialResponse) => {
+    if (credentialResponse.credential) {
+      setIsLoading(true);
+      try {
+        const success = await googleLogin(credentialResponse.credential);
+        if (success) {
+          toast({
+            title: "Welcome!",
+            description: "Logged in via Google",
+          });
+          const from = (location.state as { from?: { pathname: string } })?.from?.pathname || '/';
+          navigate(from, { replace: true });
+        } else {
+          toast({
+            title: "Login Failed",
+            description: "Google verification failed.",
+            variant: "destructive",
+          });
+        }
+      } catch (error) {
+        console.error("Google login error", error);
+        toast({
+          title: "Error",
+          description: "Google login process failed.",
+          variant: "destructive",
+        });
+      } finally {
+        setIsLoading(false);
+      }
+    }
+  };
+
+  const handleGoogleError = () => {
+    toast({
+      title: "Login Failed",
+      description: "Google Login Failed",
+      variant: "destructive",
+    });
+  };
+
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-background via-secondary/20 to-background p-4">
       <motion.div
@@ -81,7 +122,7 @@ export default function Login() {
         className="w-full max-w-md"
       >
         {/* Logo */}
-        <motion.div 
+        <motion.div
           initial={{ scale: 0.8, opacity: 0 }}
           animate={{ scale: 1, opacity: 1 }}
           transition={{ delay: 0.1, duration: 0.4 }}
@@ -105,6 +146,25 @@ export default function Login() {
             </CardDescription>
           </CardHeader>
           <CardContent>
+            <div className="flex justify-center mb-6">
+              <GoogleLogin
+                onSuccess={handleGoogleSuccess}
+                onError={handleGoogleError}
+                useOneTap
+                shape="pill"
+              />
+            </div>
+            <div className="relative mb-6">
+              <div className="absolute inset-0 flex items-center">
+                <span className="w-full border-t" />
+              </div>
+              <div className="relative flex justify-center text-xs uppercase">
+                <span className="bg-background px-2 text-muted-foreground">
+                  Or continue with
+                </span>
+              </div>
+            </div>
+
             <form onSubmit={handleSubmit} className="space-y-5">
               {/* Email */}
               <div className="space-y-2">
@@ -151,26 +211,24 @@ export default function Login() {
                     whileHover={{ scale: 1.02 }}
                     whileTap={{ scale: 0.98 }}
                     onClick={() => setRole('user')}
-                    className={`flex items-center justify-center gap-2 p-3 rounded-lg border-2 transition-all ${
-                      role === 'user'
+                    className={`flex items-center justify-center gap-2 p-3 rounded-lg border-2 transition-all ${role === 'user'
                         ? 'border-primary bg-primary/10 text-primary'
                         : 'border-border bg-background hover:border-primary/50'
-                    }`}
+                      }`}
                   >
                     <User className="h-4 w-4" />
                     <span className="font-medium">User</span>
                   </motion.button>
-                  
+
                   <motion.button
                     type="button"
                     whileHover={{ scale: 1.02 }}
                     whileTap={{ scale: 0.98 }}
                     onClick={() => setRole('admin')}
-                    className={`flex items-center justify-center gap-2 p-3 rounded-lg border-2 transition-all ${
-                      role === 'admin'
+                    className={`flex items-center justify-center gap-2 p-3 rounded-lg border-2 transition-all ${role === 'admin'
                         ? 'border-accent bg-accent/10 text-accent'
                         : 'border-border bg-background hover:border-accent/50'
-                    }`}
+                      }`}
                   >
                     <Shield className="h-4 w-4" />
                     <span className="font-medium">Admin</span>
