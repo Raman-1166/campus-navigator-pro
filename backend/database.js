@@ -16,7 +16,8 @@ const sequelize = process.env.POSTGRES_URL
     })
     : new Sequelize({
         dialect: 'sqlite',
-        storage: './database.sqlite',
+        // On Vercel (read-only), fall back to memory to prevent crash if Postgres missing.
+        storage: process.env.VERCEL ? ':memory:' : './database.sqlite',
         logging: false,
     });
 
