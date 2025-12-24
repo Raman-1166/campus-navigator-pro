@@ -48,6 +48,7 @@ const login = async (req, res) => {
         }
 
         const isMatch = await bcrypt.compare(password, user.password);
+
         if (!isMatch) {
             return res.status(400).json({ message: 'Invalid credentials' });
         }
@@ -67,19 +68,35 @@ const login = async (req, res) => {
 const googleLogin = async (req, res) => {
     try {
         const { token } = req.body;
+        console.log('--- DBG: GOOGLE LOGIN ATTEMPT ---');
+        console.log('DBG: ENV GOOGLE_CLIENT_ID:', process.env.GOOGLE_CLIENT_ID ? process.env.GOOGLE_CLIENT_ID.substring(0, 50) + '...' : 'UNDEFINED');
+        console.log('DBG: Received Token Length:', token?.length);
+
+        if (!process.env.GOOGLE_CLIENT_ID) {
+            console.error('CRITICAL ERROR: GOOGLE_CLIENT_ID is not set in the backend environment variables.');
+            return res.status(500).json({ message: 'Server configuration error: GOOGLE_CLIENT_ID missing' });
+        }
+
         const ticket = await client.verifyIdToken({
             idToken: token,
             audience: process.env.GOOGLE_CLIENT_ID,
         });
-        const { name, email, picture, email_verified, sub: googleId } = ticket.getPayload();
+        const payload = ticket.getPayload();
+        console.log('DBG: Token Verified Successfully');
+        console.log('DBG: Payload Email:', payload.email);
+        console.log('DBG: Payload Audience:', payload.aud);
+
+        const { name, email, picture, email_verified, sub: googleId } = payload;
 
         if (!email_verified) {
+            console.log('DBG: Email not verified by Google');
             return res.status(400).json({ message: 'Email not verified by Google' });
         }
 
         let user = await User.findOne({ where: { email } });
 
         if (user) {
+            console.log('DBG: Existing user found:', user.email);
             // Update googleId and picture if missing
             if (!user.googleId) {
                 user.googleId = googleId;
@@ -90,6 +107,7 @@ const googleLogin = async (req, res) => {
                 await user.save();
             }
         } else {
+            console.log('DBG: Creating new user for:', email);
             // Create new user
             user = await User.create({
                 email,
@@ -109,9 +127,20 @@ const googleLogin = async (req, res) => {
         res.json({ token: jwtToken, user: { id: user.id, email: user.email, role: user.role, profilePicture: user.profilePicture } });
 
     } catch (error) {
-        console.error("Google login error:", error);
+        console.error("DBG: Google Login Error:", error.message);
+        console.log('--- DBG: ERROR DETAILS ---');
+        console.log('Full Error:', error);
+
+        // Specific help for common errors
+        if (error.message.includes('audience mismatch')) {
+            console.log('CRITICAL: AUDIENCE MISMATCH');
+            console.log('Backend expects client ID:', process.env.GOOGLE_CLIENT_ID);
+            console.log('But the token was issued for a different client ID.');
+            console.log('Make sure frontend VITE_GOOGLE_CLIENT_ID matches backend GOOGLE_CLIENT_ID exactly.');
+        }
+
         res.status(500).json({ message: 'Google login failed', error: error.message });
     }
 };
 
-module.exports = { register, login, googleLogin };
+module.exports = { login, googleLogin }; // Register removed from public API

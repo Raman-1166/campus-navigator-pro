@@ -1,4 +1,4 @@
-const { College, Floor, Room } = require('../models/DataModels');
+const { College, Building, Floor, Room, Connection } = require('../models/DataModels');
 
 // --- College CRUD ---
 const createCollege = async (req, res) => {
@@ -10,8 +10,30 @@ const createCollege = async (req, res) => {
 
 const getColleges = async (req, res) => {
     try {
-        const colleges = await College.findAll({ include: { model: Floor, include: Room } });
+        const colleges = await College.findAll({
+            include: {
+                model: Building,
+                include: {
+                    model: Floor,
+                    include: {
+                        model: Room
+                    }
+                }
+            }
+        });
+
+        // Fetch all connections separately to keep JSON clean or include?
+        // Let's attach them to the response effectively?
+        // For standard REST, `getColleges` returns colleges.
+        // Let's add a `getConnections`?
         res.json(colleges);
+    } catch (err) { res.status(500).json({ error: err.message }); }
+};
+
+const getConnections = async (req, res) => {
+    try {
+        const connections = await Connection.findAll();
+        res.json(connections);
     } catch (err) { res.status(500).json({ error: err.message }); }
 };
 
@@ -59,5 +81,5 @@ const createRoom = async (req, res) => {
 
 module.exports = {
     createCollege, getColleges, updateCollege, deleteCollege,
-    createBuilding, createFloor, createRoom
+    createBuilding, createFloor, createRoom, getConnections
 };

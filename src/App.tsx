@@ -7,7 +7,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
-import Index from "./pages/Index";
+// import Index from "./pages/Index"; // Removed unused import
 import Navigate from "./pages/Navigate";
 import Admin from "./pages/Admin";
 import Login from "./pages/Login";
@@ -22,6 +22,14 @@ const App = () => {
   useEffect(() => {
     // Trigger fetch on mount and when auth state changes
     useNavigationStore.getState().fetchData?.();
+
+    // Debug Google Client ID
+    const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
+    if (!clientId) {
+      console.error("CRITICAL: VITE_GOOGLE_CLIENT_ID is missing in environment variables!");
+    } else {
+      console.log("Google Client ID loaded:", clientId.substring(0, 10) + "...");
+    }
   }, [isAuthenticated]);
 
   return (
@@ -32,16 +40,8 @@ const App = () => {
           <Sonner />
           <BrowserRouter>
             <Routes>
-              <Route path="/" element={<Index />} />
+              <Route path="/" element={<Navigate />} />
               <Route path="/login" element={<Login />} />
-              <Route
-                path="/navigate"
-                element={
-                  <ProtectedRoute>
-                    <Navigate />
-                  </ProtectedRoute>
-                }
-              />
               <Route
                 path="/admin"
                 element={

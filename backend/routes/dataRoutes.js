@@ -1,7 +1,7 @@
 const express = require('express');
 const {
     createCollege, getColleges, updateCollege, deleteCollege,
-    createFloor, createRoom
+    createFloor, createRoom, getConnections
 } = require('../controllers/dataController');
 const { verifyToken, requireAdmin } = require('../middleware/authMiddleware');
 
@@ -19,15 +19,15 @@ const router = express.Router();
 // "User requirements" section implies "User" role.
 // Let's protect READ with verifyToken (Any role), and WRITE with requireAdmin.
 
-// GET - All Colleges (Any Authenticated User)
-router.get('/colleges', verifyToken, getColleges);
+// GET - All Colleges (Public)
+router.post('/colleges', createCollege);
+router.get('/colleges', getColleges);
+router.put('/colleges/:id', updateCollege);
+router.delete('/colleges/:id', deleteCollege);
 
-// Admin Only
-router.post('/colleges', verifyToken, requireAdmin, createCollege);
-router.put('/colleges/:id', verifyToken, requireAdmin, updateCollege);
-router.delete('/colleges/:id', verifyToken, requireAdmin, deleteCollege);
+router.get('/connections', getConnections);
 
-router.post('/buildings', verifyToken, requireAdmin, require('../controllers/dataController').createBuilding);
+router.post('/buildings', require('../controllers/dataController').createBuilding);
 router.post('/floors', verifyToken, requireAdmin, createFloor);
 router.post('/rooms', verifyToken, requireAdmin, createRoom);
 

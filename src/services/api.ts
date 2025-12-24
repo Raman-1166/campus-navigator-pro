@@ -62,6 +62,13 @@ export const api = {
             if (!response.ok) throw new Error('Failed to fetch colleges');
             return response.json();
         },
+        getConnections: async () => {
+            const response = await fetch(`${BASE_URL}/data/connections`, {
+                headers: { ...getAuthHeader() }
+            });
+            if (!response.ok) throw new Error('Failed to fetch connections');
+            return response.json();
+        },
         // Admin only
         createCollege: async (data: any) => {
             const response = await fetch(`${BASE_URL}/data/colleges`, {

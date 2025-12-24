@@ -1,228 +1,228 @@
+import { useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Navigation as NavIcon, MapPin, RotateCcw, Accessibility } from 'lucide-react';
+import { Navigation as NavIcon, Search, MapPin, Coffee, Book, Beaker, Building, ShieldCheck, Dumbbell } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Switch } from '@/components/ui/switch';
-import { Label } from '@/components/ui/label';
+import { Card, CardContent } from '@/components/ui/card';
 import { Layout } from '@/components/layout/Layout';
-import { CollegeSelector } from '@/components/navigation/CollegeSelector';
-import { BuildingSelector } from '@/components/navigation/BuildingSelector';
 import { PlaceSearch } from '@/components/navigation/PlaceSearch';
-import { FloorPlanViewer } from '@/components/navigation/FloorPlanViewer';
 import { NavigationResult } from '@/components/navigation/NavigationResult';
 import { useNavigationStore } from '@/store/navigation-store';
 import { toast } from '@/hooks/use-toast';
 import { AnimatedSection } from '@/components/ui/AnimatedSection';
 
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { BuildingSelector } from '@/components/navigation/BuildingSelector';
+import { FloorPlanViewer } from '@/components/navigation/FloorPlanViewer';
+
+const QUICK_ACCESS = [
+  { label: 'Library', icon: Book, type: 'library' },
+  { label: 'Admin Office', icon: ShieldCheck, type: 'office' },
+  { label: 'Labs', icon: Beaker, type: 'lab' },
+  { label: 'Hostels', icon: Building, type: 'hostel' },
+  { label: 'Ground', icon: Dumbbell, type: 'ground' },
+];
+
 const Navigate = () => {
   const {
+    colleges,
     selectedCollegeId,
     selectedBuildingId,
-    selectedFloorId,
     startPlaceId,
     endPlaceId,
     navigationResult,
-    preferAccessible,
     setStartPlace,
     setEndPlace,
-    setPreferAccessible,
     calculateRoute,
     clearNavigation,
+    setSelectedCollege,
     places,
-    floors
+    floors,
+    connections, // Add connections
+    searchPlaces
   } = useNavigationStore();
 
-  const handleCalculateRoute = () => {
-    if (!startPlaceId || !endPlaceId) {
-      toast({
-        title: 'Select locations',
-        description: 'Please select both start and destination points.',
-        variant: 'destructive'
-      });
-      return;
+  // Auto-select first college on load if not selected
+  useEffect(() => {
+    if (!selectedCollegeId && colleges.length > 0) {
+      setSelectedCollege(colleges[0].id);
     }
+  }, [colleges, selectedCollegeId, setSelectedCollege]);
 
-    if (startPlaceId === endPlaceId) {
-      toast({
-        title: 'Same location',
-        description: 'Start and destination cannot be the same.',
-        variant: 'destructive'
-      });
-      return;
-    }
-
-    calculateRoute();
-    
-    const startPlace = places.find(p => p.id === startPlaceId);
-    if (startPlace) {
-      const startFloor = floors.find(f => f.id === startPlace.floorId);
-      if (startFloor) {
-        useNavigationStore.getState().setSelectedFloor(startFloor.id);
-        useNavigationStore.getState().setSelectedBuilding(startPlace.buildingId);
+  // Set default start point (e.g., "Main Gate")
+  useEffect(() => {
+    if (selectedCollegeId && !startPlaceId && places.length > 0) {
+      const mainGate = places.find(p => p.name.toLowerCase().includes('main gate') || p.name.toLowerCase().includes('entry'));
+      if (mainGate) {
+        setStartPlace(mainGate.id);
       }
     }
+  }, [selectedCollegeId, startPlaceId, places, setStartPlace]);
 
-    toast({
-      title: 'Route calculated!',
-      description: 'Follow the directions below to reach your destination.',
-    });
+  // Auto-calculate route when destinations change or data loads
+  useEffect(() => {
+    if (startPlaceId && endPlaceId && startPlaceId !== endPlaceId) {
+      calculateRoute();
+      // Auto-switch view to the building of the start place to show path
+      const startPlace = places.find(p => p.id === startPlaceId);
+      if (startPlace) {
+        useNavigationStore.getState().setSelectedBuilding(startPlace.buildingId);
+        const startFloor = floors.find(f => f.id === startPlace.floorId);
+        if (startFloor) {
+          useNavigationStore.getState().setSelectedFloor(startPlace.floorId);
+        }
+      }
+    }
+  }, [startPlaceId, endPlaceId, calculateRoute, places, floors, connections]); // Added connections to dependency
+
+
+  const handleQuickAccess = (type: string) => {
+    // Find a place matching the type or name
+    const place = places.find(p => p.type.toLowerCase().includes(type) || p.name.toLowerCase().includes(type));
+    if (place) {
+      setEndPlace(place.id);
+      toast({ title: `Selected ${place.name}`, description: 'Calculating route...' });
+    } else {
+      toast({ title: 'Not Found', description: `Could not find ${type} in this college.`, variant: 'destructive' });
+    }
   };
 
   return (
     <Layout>
-      <div className="space-y-8">
-        {/* Page Header */}
-        <motion.div
-          initial={{ opacity: 0, y: -10 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.4 }}
-          className="flex items-center gap-4"
-        >
-          <motion.div 
-            whileHover={{ scale: 1.05 }}
-            className="flex h-14 w-14 items-center justify-center rounded-2xl bg-primary shadow-md shadow-primary/20"
+      <div className="space-y-6">
+
+        {/* Header & Search Section */}
+        <section className="text-center py-8 space-y-4">
+          <motion.div
+            initial={{ opacity: 0, y: -20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="flex justify-center mb-6"
           >
-            <NavIcon className="h-7 w-7 text-primary-foreground" />
+            <Select value={selectedCollegeId || ''} onValueChange={setSelectedCollege}>
+              <SelectTrigger className="w-[280px] bg-background/50 backdrop-blur-sm border-primary/20">
+                <Building className="w-4 h-4 mr-2 text-primary" />
+                <SelectValue placeholder="Select Campus" />
+              </SelectTrigger>
+              <SelectContent>
+                {colleges.map((college) => (
+                  <SelectItem key={college.id} value={college.id}>
+                    {college.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </motion.div>
-          <div>
-            <h1 className="text-2xl md:text-3xl font-bold text-foreground">Navigate</h1>
-            <p className="text-muted-foreground">Find your way around campus</p>
-          </div>
-        </motion.div>
 
-        {/* Step 1: College Selection */}
-        <AnimatedSection delay={0.1}>
-          <Card>
-            <CardHeader className="pb-4">
-              <CardTitle className="flex items-center gap-3 text-lg">
-                <span className="flex h-7 w-7 items-center justify-center rounded-full bg-primary text-primary-foreground text-sm font-bold">
-                  1
-                </span>
-                Select College
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <CollegeSelector />
-            </CardContent>
-          </Card>
-        </AnimatedSection>
+          <motion.h1
+            initial={{ opacity: 0, y: -20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="text-4xl md:text-5xl font-bold tracking-tight text-foreground"
+          >
+            Where do you want to go?
+          </motion.h1>
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.1 }}
+            className="max-w-2xl mx-auto px-4 space-y-4"
+          >
+            {/* Start Location Search */}
+            <div className="relative z-20">
+              <label className="text-xs text-muted-foreground ml-2 mb-1 block">Start Location</label>
+              <PlaceSearch
+                placeholder="Search start point (e.g., Main Gate)..."
+                onSelect={(place) => setStartPlace(place?.id || null)}
+                selectedPlaceId={startPlaceId}
+                excludePlaceId={endPlaceId}
+              />
+            </div>
 
-        {/* Step 2: Route Selection */}
-        {selectedCollegeId && (
-          <AnimatedSection delay={0.15}>
-            <Card>
-              <CardHeader className="pb-4">
-                <CardTitle className="flex items-center gap-3 text-lg">
-                  <span className="flex h-7 w-7 items-center justify-center rounded-full bg-primary text-primary-foreground text-sm font-bold">
-                    2
-                  </span>
-                  Select Route
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-6">
-                <div className="grid gap-6 md:grid-cols-2">
-                  <div className="space-y-2">
-                    <Label className="flex items-center gap-2 text-sm font-medium">
-                      <div className="h-2 w-2 rounded-full bg-success" />
-                      Starting Point
-                    </Label>
-                    <PlaceSearch
-                      placeholder="Where are you?"
-                      onSelect={(place) => setStartPlace(place?.id || null)}
-                      selectedPlaceId={startPlaceId}
-                      excludePlaceId={endPlaceId}
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label className="flex items-center gap-2 text-sm font-medium">
-                      <div className="h-2 w-2 rounded-full bg-destructive" />
-                      Destination
-                    </Label>
-                    <PlaceSearch
-                      placeholder="Where to go?"
-                      onSelect={(place) => setEndPlace(place?.id || null)}
-                      selectedPlaceId={endPlaceId}
-                      excludePlaceId={startPlaceId}
-                    />
-                  </div>
-                </div>
+            {/* Destination Search */}
+            <div className="relative z-10">
+              <label className="text-xs text-muted-foreground ml-2 mb-1 block">Destination</label>
+              <PlaceSearch
+                placeholder="Search destination building, room..."
+                onSelect={(place) => setEndPlace(place?.id || null)}
+                selectedPlaceId={endPlaceId}
+                excludePlaceId={startPlaceId}
+              />
+            </div>
+          </motion.div>
 
-                <div className="flex flex-wrap items-center justify-between gap-4 pt-4 border-t border-border">
-                  <div className="flex items-center gap-3">
-                    <Switch
-                      id="accessible"
-                      checked={preferAccessible}
-                      onCheckedChange={setPreferAccessible}
-                    />
-                    <Label htmlFor="accessible" className="text-sm flex items-center gap-2 cursor-pointer">
-                      <Accessibility className="h-4 w-4 text-muted-foreground" />
-                      Prefer accessible routes
-                    </Label>
-                  </div>
-
-                  <div className="flex gap-3">
-                    <Button
-                      variant="outline"
-                      onClick={clearNavigation}
-                      disabled={!startPlaceId && !endPlaceId}
-                    >
-                      <RotateCcw className="h-4 w-4 mr-2" />
-                      Clear
-                    </Button>
-                    <Button
-                      variant="hero"
-                      onClick={handleCalculateRoute}
-                      disabled={!startPlaceId || !endPlaceId}
-                    >
-                      <NavIcon className="h-4 w-4 mr-2" />
-                      Get Directions
-                    </Button>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          </AnimatedSection>
-        )}
-
-        {/* Step 3: Results & Map */}
-        {selectedCollegeId && (startPlaceId || endPlaceId || navigationResult) && (
-          <AnimatedSection delay={0.2} className="grid gap-6 lg:grid-cols-2">
-            {/* Map View */}
-            <Card>
-              <CardHeader className="pb-4">
-                <CardTitle className="flex items-center gap-3 text-lg">
-                  <span className="flex h-7 w-7 items-center justify-center rounded-full bg-primary text-primary-foreground text-sm font-bold">
-                    3
-                  </span>
-                  Campus Map
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <BuildingSelector />
-                {selectedBuildingId && selectedFloorId && (
-                  <motion.div 
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    className="mt-4"
-                  >
-                    <FloorPlanViewer />
-                  </motion.div>
-                )}
-              </CardContent>
-            </Card>
-
-            {/* Navigation Result */}
-            {navigationResult && (
-              <motion.div
-                initial={{ opacity: 0, x: 20 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ delay: 0.1 }}
+          {/* Quick Access */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.2 }}
+            className="flex flex-wrap justify-center gap-3 pt-4"
+          >
+            {QUICK_ACCESS.map((item) => (
+              <Button
+                key={item.label}
+                variant="outline"
+                className="rounded-full gap-2 border-primary/10 hover:bg-primary/5 hover:border-primary/30 transition-all"
+                onClick={() => handleQuickAccess(item.type)}
               >
-                <NavigationResult />
-              </motion.div>
+                {/* {typeof item.icon !== 'string' && <item.icon className="h-4 w-4 text-primary" />} */}
+                <item.icon className="h-4 w-4 text-primary" />
+                {item.label}
+              </Button>
+            ))}
+          </motion.div>
+        </section>
+
+        {/* Navigation Content Grid */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 max-w-7xl mx-auto">
+
+          {/* LEFT: Text Directions (Col 1) */}
+          <div className={`space-y-4 ${navigationResult ? 'lg:col-span-1' : 'lg:col-span-3 max-w-2xl mx-auto'}`}>
+
+            {navigationResult && (
+              <AnimatedSection>
+                <div className="bg-card rounded-xl border border-border p-4 shadow-sm">
+                  <NavigationResult />
+                  <div className="mt-6 flex justify-center">
+                    <Button onClick={clearNavigation} variant="outline" className="px-8">
+                      Clear Route
+                    </Button>
+                  </div>
+                </div>
+              </AnimatedSection>
             )}
-          </AnimatedSection>
-        )}
+
+            {!navigationResult && (
+              <Card className="bg-secondary/20 border-none py-12">
+                <CardContent className="text-center text-muted-foreground">
+                  <MapPin className="h-16 w-16 mx-auto mb-4 opacity-20" />
+                  <h3 className="text-xl font-medium mb-2">Ready to Navigate</h3>
+                  <p>Select both a <strong>Start Location</strong> and a <strong>Destination</strong> to see directions.</p>
+                  {!startPlaceId && <p className="text-sm text-destructive mt-2">Please select a start point.</p>}
+                  {startPlaceId && !endPlaceId && <p className="text-sm text-primary mt-2">Now select a destination.</p>}
+                </CardContent>
+              </Card>
+            )}
+          </div>
+
+          {/* RIGHT: Map & Visuals (Col 2-3) - Only show if routing or specifically browsing */}
+          <div className="lg:col-span-2 space-y-4">
+            {/* 1. Building Selector Ribbon */}
+            <Card className="p-2">
+              <BuildingSelector />
+            </Card>
+
+            {/* 2. Interactive Map */}
+            {selectedBuildingId ? (
+              <FloorPlanViewer />
+            ) : (
+              <Card className="h-[500px] flex items-center justify-center bg-secondary/10 border-dashed">
+                <div className="text-center text-muted-foreground">
+                  <Building className="h-12 w-12 mx-auto mb-2 opacity-30" />
+                  <p>Select a building from the top to view its floor plan.</p>
+                </div>
+              </Card>
+            )}
+          </div>
+        </div>
+
       </div>
     </Layout>
   );

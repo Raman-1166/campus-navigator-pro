@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { MapPin, LogIn, User, Shield, Eye, EyeOff } from 'lucide-react';
+import { MapPin, LogIn, User, Shield, Eye, EyeOff, ArrowLeft } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -19,7 +19,7 @@ export default function Login() {
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [role, setRole] = useState<UserRole>('user');
+  const [role] = useState<UserRole>('admin');
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
 
@@ -114,7 +114,16 @@ export default function Login() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-background via-secondary/20 to-background p-4">
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-background via-secondary/20 to-background p-4 relative">
+      <Button
+        variant="ghost"
+        className="absolute top-4 left-4"
+        onClick={() => navigate('/')}
+      >
+        <ArrowLeft className="mr-2 h-4 w-4" />
+        Back
+      </Button>
+
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
@@ -154,15 +163,9 @@ export default function Login() {
                 shape="pill"
               />
             </div>
-            <div className="relative mb-6">
-              <div className="absolute inset-0 flex items-center">
-                <span className="w-full border-t" />
-              </div>
-              <div className="relative flex justify-center text-xs uppercase">
-                <span className="bg-background px-2 text-muted-foreground">
-                  Or continue with
-                </span>
-              </div>
+            <div className="text-center mb-8">
+              <h1 className="text-3xl font-bold text-foreground">Admin Login</h1>
+              <p className="text-muted-foreground mt-2">Enter credentials to access admin panel</p>
             </div>
 
             <form onSubmit={handleSubmit} className="space-y-5">
@@ -199,40 +202,6 @@ export default function Login() {
                   >
                     {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                   </button>
-                </div>
-              </div>
-
-              {/* Role Selection */}
-              <div className="space-y-2">
-                <Label>Login as</Label>
-                <div className="grid grid-cols-2 gap-3">
-                  <motion.button
-                    type="button"
-                    whileHover={{ scale: 1.02 }}
-                    whileTap={{ scale: 0.98 }}
-                    onClick={() => setRole('user')}
-                    className={`flex items-center justify-center gap-2 p-3 rounded-lg border-2 transition-all ${role === 'user'
-                        ? 'border-primary bg-primary/10 text-primary'
-                        : 'border-border bg-background hover:border-primary/50'
-                      }`}
-                  >
-                    <User className="h-4 w-4" />
-                    <span className="font-medium">User</span>
-                  </motion.button>
-
-                  <motion.button
-                    type="button"
-                    whileHover={{ scale: 1.02 }}
-                    whileTap={{ scale: 0.98 }}
-                    onClick={() => setRole('admin')}
-                    className={`flex items-center justify-center gap-2 p-3 rounded-lg border-2 transition-all ${role === 'admin'
-                        ? 'border-accent bg-accent/10 text-accent'
-                        : 'border-border bg-background hover:border-accent/50'
-                      }`}
-                  >
-                    <Shield className="h-4 w-4" />
-                    <span className="font-medium">Admin</span>
-                  </motion.button>
                 </div>
               </div>
 

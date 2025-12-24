@@ -1,12 +1,13 @@
 import { motion } from 'framer-motion';
-import { 
-  Route, 
-  Clock, 
-  Footprints, 
-  Building2, 
+import {
+  Route,
+  Clock,
+  Footprints,
+  Building2,
   ArrowRight,
   ArrowUp,
-  ArrowDown
+  ArrowDown,
+  ArrowLeft
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -109,9 +110,9 @@ export function NavigationResult() {
                 {/* Step indicator */}
                 <div className={`
                   flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-sm font-medium
-                  ${isFirstStep ? 'bg-success text-success-foreground' : 
-                    isLastStep ? 'bg-destructive text-destructive-foreground' : 
-                    'bg-primary text-primary-foreground'}
+                  ${isFirstStep ? 'bg-success text-success-foreground' :
+                    isLastStep ? 'bg-destructive text-destructive-foreground' :
+                      'bg-primary text-primary-foreground'}
                 `}>
                   {isFirstStep ? '▶' : isLastStep ? '◆' : index}
                 </div>
@@ -145,8 +146,14 @@ export function NavigationResult() {
                     ) : (
                       <ArrowDown className="h-5 w-5 text-warning" />
                     )
+                  ) : step.direction === 'left' ? (
+                    <ArrowLeft className="h-5 w-5 text-foreground" />
+                  ) : step.direction === 'right' ? (
+                    <ArrowRight className="h-5 w-5 text-foreground" />
+                  ) : step.direction === 'straight' ? (
+                    <ArrowUp className="h-5 w-5 text-muted-foreground" />
                   ) : !isLastStep ? (
-                    <ArrowRight className="h-5 w-5 text-muted-foreground" />
+                    <ArrowRight className="h-5 w-5 text-muted-foreground opacity-50" />
                   ) : null}
                 </div>
               </motion.button>

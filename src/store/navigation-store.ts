@@ -92,15 +92,94 @@ export const useNavigationStore = create<NavigationStore>()(
       fetchData: async () => {
         try {
           const data = await api.data.getColleges();
-          // Transform backend structure if needed. 
-          // Backend returns: [{ ...college, Floors: [{...floor, Rooms: [...]}] }]
-          // Store expects flat arrays.
-          const flatColleges = data.map((c: any) => ({ id: c.id, name: c.name, address: c.address, status: 'active' }));
-          // For simplicity, we might just load everything flat if we change backend to return flat, 
-          // OR flatten it here.
-          // Let's assume for this "run" we just load colleges for now to prove connection.
-          set({ colleges: flatColleges });
-        } catch (e) { console.error(e); }
+          const connectionsData = await api.data.getConnections(); // Assume this exists in API service
+
+          const flatColleges: College[] = [];
+          const flatBuildings: Building[] = [];
+          const flatFloors: Floor[] = [];
+          const flatPlaces: Place[] = [];
+          const flatConnections: PathConnection[] = [];
+
+          if (connectionsData) {
+            connectionsData.forEach((c: any) => {
+              flatConnections.push({
+                id: String(c.id),
+                fromPlaceId: String(c.fromPlaceId),
+                toPlaceId: String(c.toPlaceId),
+                distance: c.distance || 10, // Default distance if missing
+                type: c.type as any || 'corridor',
+                isAccessible: true
+              });
+            });
+          }
+
+          data.forEach((c: any) => {
+            flatColleges.push({
+              id: String(c.id),
+              name: c.name,
+              address: c.address,
+              status: 'active',
+              gpsLocation: c.gpsLocation || { lat: 0, lng: 0 },
+              createdAt: c.createdAt ? new Date(c.createdAt) : new Date()
+            });
+
+            if (c.Buildings) {
+              c.Buildings.forEach((b: any) => {
+                flatBuildings.push({
+                  id: String(b.id),
+                  collegeId: String(c.id),
+                  name: b.name,
+                  code: b.code || '',
+                  floors: b.Floors?.length || 0,
+                  description: b.description
+                });
+
+                if (b.Floors) {
+                  b.Floors.forEach((f: any) => {
+                    flatFloors.push({
+                      id: String(f.id),
+                      buildingId: String(b.id),
+                      floorNumber: f.level,
+                      name: f.name,
+                      width: 800,
+                      height: 600
+                    });
+
+                    if (f.Rooms) {
+                      f.Rooms.forEach((r: any) => {
+                        let pos = { x: 100, y: 100 };
+                        if (r.coordinates) {
+                          const [x, y] = r.coordinates.split(',');
+                          pos = { x: parseInt(x) || 100, y: parseInt(y) || 100 };
+                        }
+
+                        flatPlaces.push({
+                          id: String(r.id),
+                          floorId: String(f.id),
+                          buildingId: String(b.id),
+                          name: r.name,
+                          type: (r.type as any) || 'classroom',
+                          position: pos,
+                          isNode: true
+                        });
+                      });
+                    }
+                  });
+                }
+              });
+            }
+          });
+
+          set({
+            colleges: flatColleges,
+            buildings: flatBuildings,
+            floors: flatFloors,
+            places: flatPlaces,
+            connections: flatConnections
+          });
+        } catch (e) {
+          console.error("Failed to fetch data:", e);
+        }
       },
 
       selectedCollegeId: null,

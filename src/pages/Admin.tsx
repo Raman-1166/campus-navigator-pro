@@ -1,11 +1,11 @@
 import { useState } from 'react';
 import { motion } from 'framer-motion';
-import { 
-  Settings, 
-  Building2, 
-  Layers, 
-  MapPin, 
-  Plus, 
+import {
+  Settings,
+  Building2,
+  Layers,
+  MapPin,
+  Plus,
   Trash2,
   Save,
   X,
@@ -29,10 +29,14 @@ import { EditCollegeDialog } from '@/components/admin/EditCollegeDialog';
 import { EditBuildingDialog } from '@/components/admin/EditBuildingDialog';
 import { EditFloorDialog } from '@/components/admin/EditFloorDialog';
 import { EditPlaceDialog } from '@/components/admin/EditPlaceDialog';
+import { AddCollegeDialog } from '@/components/admin/AddCollegeDialog';
+import { AddBuildingDialog } from '@/components/admin/AddBuildingDialog';
+import { AddFloorDialog } from '@/components/admin/AddFloorDialog';
+import { AddPlaceDialog } from '@/components/admin/AddPlaceDialog';
 
 const placeTypes: PlaceType[] = [
-  'classroom', 'laboratory', 'office', 'canteen', 'auditorium', 
-  'library', 'restroom', 'stairs', 'lift', 'entrance', 'exit', 
+  'classroom', 'laboratory', 'office', 'canteen', 'auditorium',
+  'library', 'restroom', 'stairs', 'lift', 'entrance', 'exit',
   'corridor', 'sports', 'parking', 'other'
 ];
 
@@ -69,21 +73,12 @@ const Admin = () => {
   } = useNavigationStore();
 
   const [activeTab, setActiveTab] = useState<'colleges' | 'buildings' | 'floors' | 'places'>('colleges');
-  const [showAddForm, setShowAddForm] = useState(false);
 
-  // Form states
-  const [collegeName, setCollegeName] = useState('');
-  const [collegeAddress, setCollegeAddress] = useState('');
-  const [buildingName, setBuildingName] = useState('');
-  const [buildingCode, setBuildingCode] = useState('');
-  const [buildingFloors, setBuildingFloors] = useState('3');
-  const [floorNumber, setFloorNumber] = useState('0');
-  const [floorName, setFloorName] = useState('');
-  const [placeName, setPlaceName] = useState('');
-  const [placeCode, setPlaceCode] = useState('');
-  const [placeType, setPlaceType] = useState<PlaceType>('classroom');
-  const [placeX, setPlaceX] = useState('400');
-  const [placeY, setPlaceY] = useState('300');
+  // Add dialog states
+  const [addCollegeOpen, setAddCollegeOpen] = useState(false);
+  const [addBuildingOpen, setAddBuildingOpen] = useState(false);
+  const [addFloorOpen, setAddFloorOpen] = useState(false);
+  const [addPlaceOpen, setAddPlaceOpen] = useState(false);
 
   // Delete dialog states
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
@@ -103,104 +98,52 @@ const Admin = () => {
   const filteredFloors = floors.filter(f => f.buildingId === selectedBuildingId);
   const filteredPlaces = places.filter(p => p.floorId === selectedFloorId);
 
-  const handleAddCollege = () => {
-    if (!isAdmin) {
-      toast({ title: 'Access Denied', description: 'Only admins can add colleges', variant: 'destructive' });
-      return;
-    }
-    if (!collegeName.trim()) {
-      toast({ title: 'Error', description: 'College name is required', variant: 'destructive' });
-      return;
-    }
-    addCollege({
-      name: collegeName,
-      address: collegeAddress,
-      status: 'active',
-      gpsLocation: { lat: 0, lng: 0 }
-    });
-    setCollegeName('');
-    setCollegeAddress('');
-    setShowAddForm(false);
+  const handleAddCollege = (collegeData: Omit<College, 'id' | 'createdAt'>) => {
+    addCollege(collegeData);
     toast({ title: 'Success', description: 'College added successfully' });
   };
 
-  const handleAddBuilding = () => {
-    if (!isAdmin) {
-      toast({ title: 'Access Denied', description: 'Only admins can add buildings', variant: 'destructive' });
-      return;
-    }
-    if (!selectedCollegeId) {
-      toast({ title: 'Error', description: 'Select a college first', variant: 'destructive' });
-      return;
-    }
-    if (!buildingName.trim()) {
-      toast({ title: 'Error', description: 'Building name is required', variant: 'destructive' });
-      return;
-    }
-    addBuilding({
-      collegeId: selectedCollegeId,
-      name: buildingName,
-      code: buildingCode || buildingName.slice(0, 3).toUpperCase(),
-      floors: parseInt(buildingFloors) || 3
-    });
-    setBuildingName('');
-    setBuildingCode('');
-    setBuildingFloors('3');
-    setShowAddForm(false);
+  const handleAddBuilding = (buildingData: Omit<Building, 'id'>) => {
+    addBuilding(buildingData);
     toast({ title: 'Success', description: 'Building added successfully' });
   };
 
-  const handleAddFloor = () => {
-    if (!isAdmin) {
-      toast({ title: 'Access Denied', description: 'Only admins can add floors', variant: 'destructive' });
-      return;
-    }
-    if (!selectedBuildingId) {
-      toast({ title: 'Error', description: 'Select a building first', variant: 'destructive' });
-      return;
-    }
-    addFloor({
-      buildingId: selectedBuildingId,
-      floorNumber: parseInt(floorNumber) || 0,
-      name: floorName || `Floor ${floorNumber}`,
-      width: 800,
-      height: 600
-    });
-    setFloorNumber('0');
-    setFloorName('');
-    setShowAddForm(false);
+  const handleAddFloor = (floorData: Omit<Floor, 'id'>) => {
+    addFloor(floorData);
     toast({ title: 'Success', description: 'Floor added successfully' });
   };
 
-  const handleAddPlace = () => {
-    if (!isAdmin) {
-      toast({ title: 'Access Denied', description: 'Only admins can add places', variant: 'destructive' });
-      return;
-    }
-    if (!selectedFloorId || !selectedBuildingId) {
-      toast({ title: 'Error', description: 'Select a floor first', variant: 'destructive' });
-      return;
-    }
-    if (!placeName.trim()) {
-      toast({ title: 'Error', description: 'Place name is required', variant: 'destructive' });
-      return;
-    }
-    addPlace({
-      floorId: selectedFloorId,
-      buildingId: selectedBuildingId,
-      name: placeName,
-      code: placeCode || undefined,
-      type: placeType,
-      position: { x: parseInt(placeX) || 400, y: parseInt(placeY) || 300 },
-      isNode: true
-    });
-    setPlaceName('');
-    setPlaceCode('');
-    setPlaceType('classroom');
-    setPlaceX('400');
-    setPlaceY('300');
-    setShowAddForm(false);
+  const handleAddPlace = (placeData: Omit<Place, 'id'>) => {
+    addPlace(placeData);
     toast({ title: 'Success', description: 'Place added successfully' });
+  };
+
+  const openAddDialog = () => {
+    if (!isAdmin) return;
+    switch (activeTab) {
+      case 'colleges': setAddCollegeOpen(true); break;
+      case 'buildings':
+        if (!selectedCollegeId) {
+          toast({ title: 'Error', description: 'Select a college first', variant: 'destructive' });
+          return;
+        }
+        setAddBuildingOpen(true);
+        break;
+      case 'floors':
+        if (!selectedBuildingId) {
+          toast({ title: 'Error', description: 'Select a building first', variant: 'destructive' });
+          return;
+        }
+        setAddFloorOpen(true);
+        break;
+      case 'places':
+        if (!selectedFloorId) {
+          toast({ title: 'Error', description: 'Select a floor first', variant: 'destructive' });
+          return;
+        }
+        setAddPlaceOpen(true);
+        break;
+    }
   };
 
   const openDeleteDialog = (type: string, id: string, name: string) => {
@@ -328,7 +271,7 @@ const Admin = () => {
           className="flex items-center justify-between"
         >
           <div className="flex items-center gap-4">
-            <motion.div 
+            <motion.div
               whileHover={{ scale: 1.05 }}
               className="flex h-14 w-14 items-center justify-center rounded-2xl bg-primary shadow-md shadow-primary/20"
             >
@@ -359,12 +302,11 @@ const Admin = () => {
                   whileTap={{ scale: 0.98 }}
                   onClick={() => {
                     setActiveTab(tab.id as typeof activeTab);
-                    setShowAddForm(false);
                   }}
                   className={`
                     flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium transition-all duration-200
-                    ${isActive 
-                      ? 'bg-primary text-primary-foreground shadow-md shadow-primary/20' 
+                    ${isActive
+                      ? 'bg-primary text-primary-foreground shadow-md shadow-primary/20'
                       : 'bg-secondary text-muted-foreground hover:text-foreground hover:bg-secondary/80'
                     }
                   `}
@@ -441,191 +383,26 @@ const Admin = () => {
                   <CardDescription>Manage {activeTab} data</CardDescription>
                 </div>
                 {isAdmin && (
-                  <Button 
-                    onClick={() => setShowAddForm(!showAddForm)} 
-                    variant={showAddForm ? "outline" : "default"}
+                  <Button
+                    onClick={openAddDialog}
+                    variant="default"
                     size="sm"
+                    className="flex items-center gap-2"
                   >
-                    {showAddForm ? <X className="h-4 w-4 mr-2" /> : <Plus className="h-4 w-4 mr-2" />}
-                    {showAddForm ? 'Cancel' : 'Add New'}
+                    <Plus className="h-4 w-4" />
+                    Add New
                   </Button>
                 )}
               </CardHeader>
               <CardContent>
-                {/* Add Forms */}
-                {showAddForm && isAdmin && (
-                  <motion.div
-                    initial={{ opacity: 0, height: 0 }}
-                    animate={{ opacity: 1, height: 'auto' }}
-                    exit={{ opacity: 0, height: 0 }}
-                    className="mb-6 p-5 border border-border rounded-xl bg-secondary/30"
-                  >
-                    {activeTab === 'colleges' && (
-                      <div className="space-y-4">
-                        <div className="space-y-2">
-                          <Label>College Name</Label>
-                          <Input 
-                            value={collegeName} 
-                            onChange={(e) => setCollegeName(e.target.value)}
-                            placeholder="e.g., Delhi Technical University"
-                            className="bg-background"
-                          />
-                        </div>
-                        <div className="space-y-2">
-                          <Label>Address</Label>
-                          <Input 
-                            value={collegeAddress} 
-                            onChange={(e) => setCollegeAddress(e.target.value)}
-                            placeholder="Full address"
-                            className="bg-background"
-                          />
-                        </div>
-                        <Button onClick={handleAddCollege} className="w-full">
-                          <Save className="h-4 w-4 mr-2" />
-                          Add College
-                        </Button>
-                      </div>
-                    )}
-
-                    {activeTab === 'buildings' && (
-                      <div className="space-y-4">
-                        <div className="space-y-2">
-                          <Label>Building Name</Label>
-                          <Input 
-                            value={buildingName} 
-                            onChange={(e) => setBuildingName(e.target.value)}
-                            placeholder="e.g., Main Academic Block"
-                            className="bg-background"
-                          />
-                        </div>
-                        <div className="grid grid-cols-2 gap-4">
-                          <div className="space-y-2">
-                            <Label>Code</Label>
-                            <Input 
-                              value={buildingCode} 
-                              onChange={(e) => setBuildingCode(e.target.value)}
-                              placeholder="e.g., MAB"
-                              className="bg-background"
-                            />
-                          </div>
-                          <div className="space-y-2">
-                            <Label>Number of Floors</Label>
-                            <Input 
-                              type="number"
-                              value={buildingFloors} 
-                              onChange={(e) => setBuildingFloors(e.target.value)}
-                              className="bg-background"
-                            />
-                          </div>
-                        </div>
-                        <Button onClick={handleAddBuilding} className="w-full">
-                          <Save className="h-4 w-4 mr-2" />
-                          Add Building
-                        </Button>
-                      </div>
-                    )}
-
-                    {activeTab === 'floors' && (
-                      <div className="space-y-4">
-                        <div className="grid grid-cols-2 gap-4">
-                          <div className="space-y-2">
-                            <Label>Floor Number</Label>
-                            <Input 
-                              type="number"
-                              value={floorNumber} 
-                              onChange={(e) => setFloorNumber(e.target.value)}
-                              className="bg-background"
-                            />
-                          </div>
-                          <div className="space-y-2">
-                            <Label>Floor Name</Label>
-                            <Input 
-                              value={floorName} 
-                              onChange={(e) => setFloorName(e.target.value)}
-                              placeholder="e.g., Ground Floor"
-                              className="bg-background"
-                            />
-                          </div>
-                        </div>
-                        <Button onClick={handleAddFloor} className="w-full">
-                          <Save className="h-4 w-4 mr-2" />
-                          Add Floor
-                        </Button>
-                      </div>
-                    )}
-
-                    {activeTab === 'places' && (
-                      <div className="space-y-4">
-                        <div className="grid grid-cols-2 gap-4">
-                          <div className="space-y-2">
-                            <Label>Place Name</Label>
-                            <Input 
-                              value={placeName} 
-                              onChange={(e) => setPlaceName(e.target.value)}
-                              placeholder="e.g., Room 101"
-                              className="bg-background"
-                            />
-                          </div>
-                          <div className="space-y-2">
-                            <Label>Code</Label>
-                            <Input 
-                              value={placeCode} 
-                              onChange={(e) => setPlaceCode(e.target.value)}
-                              placeholder="e.g., 101"
-                              className="bg-background"
-                            />
-                          </div>
-                        </div>
-                        <div className="space-y-2">
-                          <Label>Type</Label>
-                          <Select value={placeType} onValueChange={(v) => setPlaceType(v as PlaceType)}>
-                            <SelectTrigger className="bg-background">
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {placeTypes.map(type => (
-                                <SelectItem key={type} value={type} className="capitalize">
-                                  {type}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                        </div>
-                        <div className="grid grid-cols-2 gap-4">
-                          <div className="space-y-2">
-                            <Label>X Position</Label>
-                            <Input 
-                              type="number"
-                              value={placeX} 
-                              onChange={(e) => setPlaceX(e.target.value)}
-                              className="bg-background"
-                            />
-                          </div>
-                          <div className="space-y-2">
-                            <Label>Y Position</Label>
-                            <Input 
-                              type="number"
-                              value={placeY} 
-                              onChange={(e) => setPlaceY(e.target.value)}
-                              className="bg-background"
-                            />
-                          </div>
-                        </div>
-                        <Button onClick={handleAddPlace} className="w-full">
-                          <Save className="h-4 w-4 mr-2" />
-                          Add Place
-                        </Button>
-                      </div>
-                    )}
-                  </motion.div>
-                )}
+                {/* Add Forms - Replaced by Dialogs */}
 
                 {/* List Items */}
                 <div className="space-y-2 max-h-[400px] overflow-y-auto scrollbar-thin pr-1">
                   <StaggerContainer staggerDelay={0.05}>
                     {activeTab === 'colleges' && colleges.map(item => (
                       <StaggerItem key={item.id}>
-                        <motion.div 
+                        <motion.div
                           whileHover={{ x: 4 }}
                           className="flex items-center justify-between p-4 rounded-xl bg-secondary/50 hover:bg-secondary transition-colors"
                         >
@@ -664,7 +441,7 @@ const Admin = () => {
 
                     {activeTab === 'buildings' && filteredBuildings.map(item => (
                       <StaggerItem key={item.id}>
-                        <motion.div 
+                        <motion.div
                           whileHover={{ x: 4 }}
                           className="flex items-center justify-between p-4 rounded-xl bg-secondary/50 hover:bg-secondary transition-colors"
                         >
@@ -701,7 +478,7 @@ const Admin = () => {
 
                     {activeTab === 'floors' && filteredFloors.map(item => (
                       <StaggerItem key={item.id}>
-                        <motion.div 
+                        <motion.div
                           whileHover={{ x: 4 }}
                           className="flex items-center justify-between p-4 rounded-xl bg-secondary/50 hover:bg-secondary transition-colors"
                         >
@@ -735,7 +512,7 @@ const Admin = () => {
 
                     {activeTab === 'places' && filteredPlaces.map(item => (
                       <StaggerItem key={item.id}>
-                        <motion.div 
+                        <motion.div
                           whileHover={{ x: 4 }}
                           className="flex items-center justify-between p-4 rounded-xl bg-secondary/50 hover:bg-secondary transition-colors"
                         >
@@ -889,6 +666,32 @@ const Admin = () => {
         onOpenChange={setEditPlaceOpen}
         place={editPlaceData}
         onSave={handleSavePlace}
+      />
+
+      {/* Add Dialogs */}
+      <AddCollegeDialog
+        open={addCollegeOpen}
+        onOpenChange={setAddCollegeOpen}
+        onAdd={handleAddCollege}
+      />
+      <AddBuildingDialog
+        open={addBuildingOpen}
+        onOpenChange={setAddBuildingOpen}
+        collegeId={selectedCollegeId}
+        onAdd={handleAddBuilding}
+      />
+      <AddFloorDialog
+        open={addFloorOpen}
+        onOpenChange={setAddFloorOpen}
+        buildingId={selectedBuildingId}
+        onAdd={handleAddFloor}
+      />
+      <AddPlaceDialog
+        open={addPlaceOpen}
+        onOpenChange={setAddPlaceOpen}
+        floorId={selectedFloorId}
+        buildingId={selectedBuildingId}
+        onAdd={handleAddPlace}
       />
     </Layout>
   );
