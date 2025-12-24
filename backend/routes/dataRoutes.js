@@ -30,5 +30,6 @@ router.get('/connections', getConnections);
 router.post('/buildings', require('../controllers/dataController').createBuilding);
 router.post('/floors', verifyToken, requireAdmin, createFloor);
 router.post('/rooms', verifyToken, requireAdmin, createRoom);
+router.get('/seed-force', require('../controllers/dataController').forceSeed);
 
 module.exports = router;
