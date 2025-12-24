@@ -38,17 +38,27 @@ app.get('/', (req, res) => {
 });
 
 // Database Sync and Start Server
-(async () => {
+// Database Sync and Start Server
+const startServer = async () => {
     try {
         await sequelize.authenticate();
         console.log('Database connected successfully.');
-        await sequelize.sync(); // Create or update tables
 
-        app.listen(PORT, () => {
-            console.log(`Server running on port ${PORT}`);
-        });
+        // Sync database (be careful in production with force: true)
+        await sequelize.sync();
+
+        // Only start server if running directly
+        if (require.main === module) {
+            app.listen(PORT, () => {
+                console.log(`Server running on port ${PORT}`);
+            });
+        }
     } catch (error) {
         console.error('Unable to connect to the database:', error);
     }
-})();
+};
+
+startServer();
+
+module.exports = app;
 
