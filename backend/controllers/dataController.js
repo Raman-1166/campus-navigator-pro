@@ -80,51 +80,48 @@ const createRoom = async (req, res) => {
 };
 
 const forceSeed = async (req, res) => {
-    // SECURITY: Simple protection, or rely on it being a temporary endpoint
-    // In production, you would remove this or protect it heavily.
-    // For this context, we just want to get it working.
+    // SECURITY: Simple protection, rely on it being temporary.
     try {
-        const seedUser = require('../seed');
-        const seedData = require('../seed_data');
-
-        // We need to export seed functions in those files to call them, 
-        // OR we can just copy-paste the logic here for simplicity/safety to avoid modifying those files too much 
-        // if they are self-executing.
-        // Actually, let's just use child_process to run the scripts? 
-        // No, environment context is better if we just import logic. 
-        // But the seed files call their functions at the end: `seed();` and `seedData();`.
-        // So require() triggers them immediately if we are not careful? 
-        // Let's just create admin directly here.
-
+        const sequelize = require('../database');
         const User = require('../models/User');
         const bcrypt = require('bcryptjs');
+
+        // 1. Ensure DB is synced (Fixes "no such table" errors on cold start)
+        await sequelize.sync();
+
         const adminEmail = 'raman@example.com';
         const adminPassword = 'ramanpassword';
 
         let msg = "Start Seeding... ";
 
+        // 2. Hash password
+        const hashedPassword = await bcrypt.hash(adminPassword, 10);
+
+        // 3. Upsert Admin User (Create or Update)
         const existingAdmin = await User.findOne({ where: { email: adminEmail } });
-        if (!existingAdmin) {
-            const hashedPassword = await bcrypt.hash(adminPassword, 10);
+
+        if (existingAdmin) {
+            existingAdmin.password = hashedPassword;
+            existingAdmin.role = 'admin';
+            await existingAdmin.save();
+            msg += "Admin exists. Password reset to default. ";
+        } else {
             await User.create({
                 email: adminEmail,
                 password: hashedPassword,
                 role: 'admin',
             });
             msg += "Admin Created. ";
-        } else {
-            msg += "Admin exists. ";
         }
 
-        // For data, calling the same logic as seed_data
-        // We can just rely on the user running this multiple times if needed, or implement full checks.
-        // For brevity, let's just return success for Admin, which is the blocker.
-
-        res.json({ message: 'Seeding attempt finished. ' + msg });
+        res.json({ message: 'Success! ' + msg });
     } catch (err) {
-        res.status(500).json({ error: err.message });
+        console.error("Seed Error:", err);
+        res.status(500).json({ error: err.message, stack: err.stack });
     }
 };
+
+
 
 module.exports = {
     createCollege, getColleges, updateCollege, deleteCollege,
