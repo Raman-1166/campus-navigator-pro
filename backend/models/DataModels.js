@@ -21,6 +21,8 @@ const Floor = sequelize.define('Floor', {
     id: { type: DataTypes.INTEGER, autoIncrement: true, primaryKey: true },
     name: { type: DataTypes.STRING, allowNull: false }, // e.g., "Ground Floor", "1st Floor"
     floorNumber: { type: DataTypes.INTEGER, allowNull: false }, // 0, 1, 2...
+    width: { type: DataTypes.INTEGER, defaultValue: 800 },
+    height: { type: DataTypes.INTEGER, defaultValue: 600 },
     buildingId: {
         type: DataTypes.INTEGER,
         references: { model: Building, key: 'id' }
