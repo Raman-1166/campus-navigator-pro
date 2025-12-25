@@ -1,5 +1,16 @@
 const dotenv = require('dotenv');
-dotenv.config();
+const path = require('path');
+
+// Explicitly load .env from the backend directory
+const envPath = path.resolve(__dirname, '.env');
+const result = dotenv.config({ path: envPath });
+
+if (result.error) {
+    console.warn('Warning: .env file not found at:', envPath);
+} else {
+    console.log('Loaded .env from:', envPath);
+    console.log('GOOGLE_CLIENT_ID set:', process.env.GOOGLE_CLIENT_ID ? 'Yes' : 'No');
+}
 
 const express = require('express');
 const cors = require('cors');
